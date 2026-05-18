@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 from app.core.config import settings
 from datetime import datetime,timedelta
-from jose import jwt
+from jose import jwt,JWTError
 
 pwd_context = CryptContext(schemes=["bcrypt"],deprecated = "auto")
 
@@ -29,3 +29,12 @@ def create_access_token(subject:str)->str:
       algorithm=settings.ALGORITHM
    )
 
+def decode_access_token(token:str) -> str|None:
+   try:
+      playlod = jwt.decode(
+         token,
+         settings.SECRET_KEY,
+         algorithms= [settings.ALGORITHM]
+      )
+   except JWTError:
+      return None
