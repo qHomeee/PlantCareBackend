@@ -15,4 +15,13 @@ app.add_middleware(
     allow_methods = ["*"],
     allow_headers = ["*"],
 )
+app.include_router(api_router,prefix=setting.API_V1_PREFIX)
 
+
+
+@app.get("/")
+def root():
+    return{
+        "message": "PlantCare API is running",
+        "docs": "/docs",
+    }
