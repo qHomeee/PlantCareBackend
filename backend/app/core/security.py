@@ -29,12 +29,15 @@ def create_access_token(subject:str)->str:
       algorithm=settings.ALGORITHM
    )
 
-def decode_access_token(token:str) -> str|None:
-   try:
-      playlod = jwt.decode(
-         token,
-         settings.SECRET_KEY,
-         algorithms= [settings.ALGORITHM]
-      )
-   except JWTError:
-      return None
+def decode_access_token(token: str) -> dict | None:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        print("JWT payload:", payload)
+        return payload
+    except JWTError as error:
+        print("JWT decode error:", error)
+        return None
