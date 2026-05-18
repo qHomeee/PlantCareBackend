@@ -37,7 +37,7 @@ def update_user(db: Session, user: User, user_data: UserUpdate) -> User:
     return user
 
 
-def authenficate_user(db:Session,email:str,password:str)->User|None:
+def authenticate_user(db:Session,email:str,password:str)->User|None:
     user = get_user_by_email(db,email)
 
     if not user: 
