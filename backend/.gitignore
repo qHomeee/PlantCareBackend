@@ -1,4 +1,4 @@
 .env
 !.vscode/
 !venv/
-**/_pycache_/
+!**/__pycache__/
