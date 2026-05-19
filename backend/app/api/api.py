@@ -1,5 +1,5 @@
 import fastapi
-from app.api.v1.endpoints import auth,users,plants,care
+from app.api.v1.endpoints import auth,users,plants,care,gallery
 
 
 api_router = fastapi.APIRouter()
@@ -32,4 +32,10 @@ api_router.include_router(
     care.router,
     prefix="/care",
     tags=["Care"]
+)
+
+api_router.include_router(
+    gallery.router,
+    prefix="/gallery",
+    tags= ["Gallery"]
 )

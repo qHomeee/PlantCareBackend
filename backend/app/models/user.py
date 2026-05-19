@@ -1,22 +1,23 @@
 from datetime import datetime
 
-from sqlalchemy import *
-from sqlalchemy.orm import Mapped,mapped_column
+from sqlalchemy import DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
 
 class User(Base):
-    __tablename__="user"
-    
-    id: Mapped[int] = mapped_column(Integer,primary_key=True,index=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True,index=True, nullable=False)
+    __tablename__ = "users"
 
-    username:Mapped[str] = mapped_column(String(100), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    hashed_password:Mapped[str] =mapped_column(String(255),nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(100), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime,default=datetime.now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default= datetime.now,onupdate=datetime.now)
-    
-     
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.now,
+        onupdate=datetime.now,
+    )
