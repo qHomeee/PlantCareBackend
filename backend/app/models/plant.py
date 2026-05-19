@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Mapped,mapped_column
 from app.core.database import Base
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Integer, String, Text,Float
 
 class Plant(Base):
     __tablename__= "plants"
@@ -19,7 +19,16 @@ class Plant(Base):
     watering_interval_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7)
 
     light_info: Mapped[str] = mapped_column(Text, nullable=False)
-    temperature_info: Mapped[str] = mapped_column(Text, nullable=False)
+    min_temperature_celsius: Mapped[float] = mapped_column(
+       Float,
+       nullable=False,
+       default=18.0,
+    )
+    max_temperature_celsius: Mapped[float] = mapped_column(
+       Float,
+       nullable=False,
+       default=26.0,
+    )
     humidity_info: Mapped[str] = mapped_column(Text, nullable=False)
 
     soil_info: Mapped[str] = mapped_column(Text, nullable=False)

@@ -11,7 +11,8 @@ class PlantBase(BaseModel):
     watering_interval_days: int = Field(ge=1, le=60)
 
     light_info: str
-    temperature_info: str
+    min_temperature_celsius: float = Field(ge=-10, le=60)
+    max_temperature_celsius: float = Field(ge=-10, le=60)
     humidity_info: str
 
     soil_info: str
