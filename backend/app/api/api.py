@@ -1,5 +1,5 @@
 import fastapi
-from app.api.v1.endpoints import auth,users,plants
+from app.api.v1.endpoints import auth,users,plants,care
 
 
 api_router = fastapi.APIRouter()
@@ -26,4 +26,10 @@ api_router.include_router(
     plants.router,
     prefix="/plants",
     tags= ["Plants"]
+)
+
+api_router.include_router(
+    care.router,
+    prefix="/care",
+    tags=["Care"]
 )
