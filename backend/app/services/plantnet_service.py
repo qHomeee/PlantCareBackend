@@ -4,7 +4,10 @@ from fastapi import UploadFile
 from app.core.config import settings
 
 
-async def recognize_plant_with_plantnet(file: UploadFile) -> dict:
+async def recognize_plant_with_plantnet(
+    file: UploadFile,
+    organ: str = "leaf",
+) -> dict:
     image_bytes = await file.read()
 
     files = {
@@ -13,6 +16,10 @@ async def recognize_plant_with_plantnet(file: UploadFile) -> dict:
             image_bytes,
             file.content_type or "image/jpeg",
         )
+    }
+
+    data = {
+        "organs": organ,
     }
 
     params = {
@@ -25,8 +32,13 @@ async def recognize_plant_with_plantnet(file: UploadFile) -> dict:
         response = await client.post(
             settings.PLANTNET_API_URL,
             params=params,
+            data=data,
             files=files,
         )
 
+    print("PlantNet status:", response.status_code)
+    print("PlantNet response:", response.text)
+
     response.raise_for_status()
+
     return response.json()

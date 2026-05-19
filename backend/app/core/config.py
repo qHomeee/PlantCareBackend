@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     PLANTNET_API_KEY: str
     PLANTNET_API_URL: str
 
-    DEEPSEEK_API_KEY: str = "example"
+    DEEPSEEK_API_KEY: str
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
     DEEPSEEK_MODEL: str = "deepseek-chat"
 

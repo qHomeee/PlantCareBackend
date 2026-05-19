@@ -6,7 +6,6 @@ from fastapi import HTTPException, status
 from app.core.config import settings
 from app.schemas.plant import PlantCreate
 
-
 def build_plant_care_prompt(
     scientific_name: str,
     common_name: str | None = None,
@@ -48,6 +47,47 @@ JSON должен содержать строго следующие поля:
 """
 
 
+
+def get_fallback_plant_care(
+    scientific_name: str,
+    common_name: str | None = None,
+) -> PlantCreate:
+    display_name = common_name or scientific_name
+
+    return PlantCreate(
+        common_name=display_name,
+        scientific_name=scientific_name,
+        description=(
+            f"{display_name} — растение, определенное по фотографии. "
+            "Точные рекомендации по уходу требуют дополнительного уточнения."
+        ),
+        watering_info=(
+            "Поливать после подсыхания верхнего слоя почвы. "
+            "Не допускать застоя воды в горшке."
+        ),
+        watering_interval_days=7,
+        light_info=(
+            "Рекомендуется яркий рассеянный свет. "
+            "Следует избегать длительного воздействия прямых солнечных лучей."
+        ),
+        temperature_info="Оптимальная температура содержания в среднем 18–26 °C.",
+        humidity_info="Рекомендуется поддерживать умеренную влажность воздуха.",
+        soil_info="Подходит рыхлый грунт с хорошим дренажем.",
+        fertilizing_info=(
+            "Подкормка рекомендуется в период активного роста, "
+            "обычно 1 раз в месяц."
+        ),
+        fertilizing_interval_days=30,
+        care_info=(
+            "Следует регулярно осматривать листья, избегать переувлажнения, "
+            "пересушивания и резких перепадов температуры."
+        ),
+        useful_info=(
+            "Перед добавлением растения в коллекцию рекомендуется проверить "
+            "результат распознавания."
+        ),
+    )
+
 async def get_plant_care_from_deepseek(
     scientific_name: str,
     common_name: str | None = None,
@@ -78,6 +118,8 @@ async def get_plant_care_from_deepseek(
             headers=headers,
             json=payload,
         )
+    print("DeepSeek status:", response.status_code)
+    print("DeepSeek response:", response.text)
 
     if response.status_code >= 400:
         raise HTTPException(
