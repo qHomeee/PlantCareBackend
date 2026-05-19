@@ -60,7 +60,7 @@ def get_fallback_plant_care(
     common_name: str | None = None,
 ) -> PlantCreate:
     display_name = common_name or scientific_name
-
+    print("deepseekfallback")
     return PlantCreate(
         common_name=display_name,
         scientific_name=scientific_name,
@@ -77,7 +77,8 @@ def get_fallback_plant_care(
             "Рекомендуется яркий рассеянный свет. "
             "Следует избегать длительного воздействия прямых солнечных лучей."
         ),
-        temperature_info="Оптимальная температура содержания в среднем 18–26 °C.",
+        min_temperature_celsius=18,
+        max_temperature_celsius=26,
         humidity_info="Рекомендуется поддерживать умеренную влажность воздуха.",
         soil_info="Подходит рыхлый грунт с хорошим дренажем.",
         fertilizing_info=(
@@ -119,7 +120,7 @@ async def get_plant_care_from_deepseek(
         "temperature": 0.2,
     }
 
-    async with httpx.AsyncClient(timeout=40.0) as client:
+    async with httpx.AsyncClient(timeout=50.0) as client:
         response = await client.post(
             settings.DEEPSEEK_API_URL,
             headers=headers,
