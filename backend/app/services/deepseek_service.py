@@ -27,7 +27,8 @@ JSON должен содержать строго следующие поля:
   "watering_info": "string",
   "watering_interval_days": 7,
   "light_info": "string",
-  "temperature_info": "string",
+  "min_temperature_celsius": 18.0,
+  "max_temperature_celsius": 26.0,
   "humidity_info": "string",
   "soil_info": "string",
   "fertilizing_info": "string",
@@ -43,6 +44,12 @@ JSON должен содержать строго следующие поля:
 - Все текстовые поля должны быть на русском языке.
 - watering_interval_days должен быть целым числом от 1 до 60.
 - fertilizing_interval_days должен быть целым числом от 1 до 180.
+- min_care_temperature_celsius и max_care_temperature_celsius должны быть числами в градусах Цельсия.
+- min_care_temperature_celsius — минимальная допустимая температура содержания растения в домашних условиях.
+- max_care_temperature_celsius — максимальная допустимая температура содержания растения в домашних условиях.
+- Это не средняя температура и не текущая температура воздуха.
+- Если для растения подходит диапазон 18–26 °C, нужно вернуть min_care_temperature_celsius = 18.0 и max_care_temperature_celsius = 26.0.
+- max_care_temperature_celsius должен быть больше min_care_temperature_celsius.
 - scientific_name должен остаться латинским названием.
 """
 
