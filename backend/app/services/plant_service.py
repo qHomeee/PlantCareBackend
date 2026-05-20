@@ -8,8 +8,15 @@ def get_plant_by_id(db: Session, plant_id: int) -> Plant | None:
     return db.query(Plant).filter(Plant.id == plant_id).first()
 
 
-def get_plant_by_scientific_name(db: Session, scientific_name: str) -> Plant | None:
-    return db.query(Plant).filter(Plant.scientific_name == scientific_name).first()
+def get_plant_by_scientific_name(
+    db: Session,
+    scientific_name: str,
+) -> Plant | None:
+    return (
+        db.query(Plant)
+        .filter(Plant.scientific_name == scientific_name)
+        .first()
+    )
 
 
 def create_plant(db: Session, plant_data: PlantCreate) -> Plant:
