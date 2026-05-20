@@ -29,7 +29,13 @@ class UserPlant(Base):
 
     added_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=datetime.now,
     )
 
     plant = relationship("Plant")
+
+    watering_events = relationship(
+        "WateringEvent",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
