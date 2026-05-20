@@ -27,4 +27,7 @@ class WateringEvent(Base):
         default=datetime.now,
     )
 
-    user_plant = relationship("UserPlant")
+    user_plant = relationship(
+        "UserPlant",
+        back_populates="watering_events",
+    )
