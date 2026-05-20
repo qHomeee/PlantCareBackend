@@ -1,17 +1,18 @@
 import json
 
-import httpx
 from fastapi import HTTPException, status
+from openai import OpenAI
 
 from app.core.config import settings
 from app.schemas.plant import PlantCreate
+
 
 def build_plant_care_prompt(
     scientific_name: str,
     common_name: str | None = None,
 ) -> str:
     return f"""
-Ты эксперт по растениям.
+Ты эксперт по уходу за комнатными и садовыми растениями.
 
 Верни строго валидный JSON с рекомендациями по уходу за растением.
 
@@ -19,7 +20,7 @@ def build_plant_care_prompt(
 - Латинское название: {scientific_name}
 - Обычное название: {common_name or "не указано"}
 
-JSON должен содержать строго следующие поля:
+JSON должен содержать строго следующие поля(данные у полей являются примером):
 {{
   "common_name": "string",
   "scientific_name": "string",
@@ -44,15 +45,13 @@ JSON должен содержать строго следующие поля:
 - Все текстовые поля должны быть на русском языке.
 - watering_interval_days должен быть целым числом от 1 до 60.
 - fertilizing_interval_days должен быть целым числом от 1 до 180.
-- min_care_temperature_celsius и max_care_temperature_celsius должны быть числами в градусах Цельсия.
-- min_care_temperature_celsius — минимальная допустимая температура содержания растения в домашних условиях.
-- max_care_temperature_celsius — максимальная допустимая температура содержания растения в домашних условиях.
-- Это не средняя температура и не текущая температура воздуха.
-- Если для растения подходит диапазон 18–26 °C, нужно вернуть min_care_temperature_celsius = 18.0 и max_care_temperature_celsius = 26.0.
-- max_care_temperature_celsius должен быть больше min_care_temperature_celsius.
+- min_temperature_celsius и max_temperature_celsius должны быть числами в градусах Цельсия.
+- min_temperature_celsius — минимальная допустимая температура содержания растения.
+- max_temperature_celsius — максимальная допустимая температура содержания растения.
+- max_temperature_celsius должен быть больше min_temperature_celsius.
+- Если для растения подходит диапазон 18–26 °C, нужно вернуть min_temperature_celsius = 18.0 и max_temperature_celsius = 26.0.
 - scientific_name должен остаться латинским названием.
 """
-
 
 
 def get_fallback_plant_care(
@@ -60,7 +59,7 @@ def get_fallback_plant_care(
     common_name: str | None = None,
 ) -> PlantCreate:
     display_name = common_name or scientific_name
-    print("deepseekfallback")
+
     return PlantCreate(
         common_name=display_name,
         scientific_name=scientific_name,
@@ -77,8 +76,8 @@ def get_fallback_plant_care(
             "Рекомендуется яркий рассеянный свет. "
             "Следует избегать длительного воздействия прямых солнечных лучей."
         ),
-        min_temperature_celsius=18,
-        max_temperature_celsius=26,
+        min_temperature_celsius=18.0,
+        max_temperature_celsius=26.0,
         humidity_info="Рекомендуется поддерживать умеренную влажность воздуха.",
         soil_info="Подходит рыхлый грунт с хорошим дренажем.",
         fertilizing_info=(
@@ -96,53 +95,64 @@ def get_fallback_plant_care(
         ),
     )
 
+
+def clean_json_content(content: str) -> str:
+    content = content.strip()
+
+    if content.startswith("```json"):
+        content = content.replace("```json", "", 1).strip()
+
+    if content.startswith("```"):
+        content = content.replace("```", "", 1).strip()
+
+    if content.endswith("```"):
+        content = content[:-3].strip()
+
+    return content
+
+
 async def get_plant_care_from_deepseek(
     scientific_name: str,
     common_name: str | None = None,
 ) -> PlantCreate:
-    headers = {
-        "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json",
-    }
-
-    payload = {
-        "model": settings.DEEPSEEK_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Ты возвращаешь только валидный JSON без markdown и пояснений.",
-            },
-            {
-                "role": "user",
-                "content": build_plant_care_prompt(scientific_name, common_name),
-            },
-        ],
-        "temperature": 0.2,
-    }
-
-    async with httpx.AsyncClient(timeout=50.0) as client:
-        response = await client.post(
-            settings.DEEPSEEK_API_URL,
-            headers=headers,
-            json=payload,
-        )
-    print("DeepSeek status:", response.status_code)
-    print("DeepSeek response:", response.text)
-
-    if response.status_code >= 400:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Ошибка при обращении к DeepSeek API",
-        )
-
-    data = response.json()
+    client = OpenAI(
+        base_url=settings.OPENROUTER_BASE_URL,
+        api_key=settings.OPENROUTER_API_KEY,
+    )
 
     try:
-        content = data["choices"][0]["message"]["content"].strip()
+        response = client.chat.completions.create(
+            model=settings.OPENROUTER_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты возвращаешь только валидный JSON. "
+                        "Не используй markdown. Не добавляй пояснения."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": build_plant_care_prompt(
+                        scientific_name=scientific_name,
+                        common_name=common_name,
+                    ),
+                },
+            ],
+            temperature=0.2,
+            extra_body={
+                "reasoning": {
+                    "enabled": True
+                }
+            },
+        )
 
-        if content.startswith("```"):
-            content = content.replace("```json", "").replace("```", "").strip()
+        content = response.choices[0].message.content
 
+        if content is None:
+            raise ValueError("OpenRouter вернул пустой content")
+
+        content = clean_json_content(content)
         parsed = json.loads(content)
 
         if common_name and not parsed.get("common_name"):
@@ -152,8 +162,10 @@ async def get_plant_care_from_deepseek(
 
         return PlantCreate(**parsed)
 
-    except Exception:
+    except Exception as error:
+        print("OpenRouter error:", repr(error))
+
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="DeepSeek вернул некорректный JSON",
+            detail="Ошибка при обращении к OpenRouter API",
         )
