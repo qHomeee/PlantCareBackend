@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.api import api_router
 from app.core.config import settings
 
-from app.models import User
+from app.models import Plant, User, UserPlant, WateringEvent
 from app.core.database import Base,engine
 
 
