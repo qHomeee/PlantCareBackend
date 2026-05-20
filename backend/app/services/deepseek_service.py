@@ -1,10 +1,17 @@
 import json
+from typing import Any
 
 from fastapi import HTTPException, status
 from openai import OpenAI
 
 from app.core.config import settings
 from app.schemas.plant import PlantCreate
+
+
+client = OpenAI(
+    base_url=settings.OPENROUTER_BASE_URL,
+    api_key=settings.OPENROUTER_API_KEY,
+)
 
 
 def build_plant_care_prompt(
@@ -20,7 +27,7 @@ def build_plant_care_prompt(
 - Латинское название: {scientific_name}
 - Обычное название: {common_name or "не указано"}
 
-JSON должен содержать строго следующие поля(данные у полей являются примером):
+JSON должен содержать строго следующие поля:
 {{
   "common_name": "string",
   "scientific_name": "string",
@@ -41,16 +48,20 @@ JSON должен содержать строго следующие поля(д
 Требования:
 - Ответ должен быть только JSON.
 - Без markdown.
-- Без пояснений.
+- Без блока ```json.
+- Без пояснений до или после JSON.
 - Все текстовые поля должны быть на русском языке.
+- Не смешивай русский и английский языки.
+- common_name должен быть русским названием растения.
+- scientific_name должен остаться латинским названием без автора.
 - watering_interval_days должен быть целым числом от 1 до 60.
 - fertilizing_interval_days должен быть целым числом от 1 до 180.
 - min_temperature_celsius и max_temperature_celsius должны быть числами в градусах Цельсия.
 - min_temperature_celsius — минимальная допустимая температура содержания растения.
 - max_temperature_celsius — максимальная допустимая температура содержания растения.
 - max_temperature_celsius должен быть больше min_temperature_celsius.
-- Если для растения подходит диапазон 18–26 °C, нужно вернуть min_temperature_celsius = 18.0 и max_temperature_celsius = 26.0.
-- scientific_name должен остаться латинским названием.
+- Не добавляй лишние поля.
+- Не пропускай поля.
 """
 
 
@@ -97,29 +108,108 @@ def get_fallback_plant_care(
 
 
 def clean_json_content(content: str) -> str:
+    """
+    Очищает ответ модели и вытаскивает JSON-объект.
+    """
+
     content = content.strip()
 
     if content.startswith("```json"):
-        content = content.replace("```json", "", 1).strip()
+        content = content.removeprefix("```json").strip()
+
+    if content.startswith("```JSON"):
+        content = content.removeprefix("```JSON").strip()
 
     if content.startswith("```"):
-        content = content.replace("```", "", 1).strip()
+        content = content.removeprefix("```").strip()
 
     if content.endswith("```"):
-        content = content[:-3].strip()
+        content = content.removesuffix("```").strip()
 
-    return content
+    first_brace = content.find("{")
+    last_brace = content.rfind("}")
+
+    if first_brace == -1 or last_brace == -1:
+        raise ValueError("В ответе OpenRouter не найден JSON-объект")
+
+    return content[first_brace:last_brace + 1]
+
+
+def validate_plant_care_dict(data: dict[str, Any]) -> dict[str, Any]:
+    required_fields = [
+        "common_name",
+        "scientific_name",
+        "description",
+        "watering_info",
+        "watering_interval_days",
+        "light_info",
+        "min_temperature_celsius",
+        "max_temperature_celsius",
+        "humidity_info",
+        "soil_info",
+        "fertilizing_info",
+        "fertilizing_interval_days",
+        "care_info",
+        "useful_info",
+    ]
+
+    missing_fields = [
+        field for field in required_fields
+        if field not in data
+    ]
+
+    if missing_fields:
+        raise ValueError(f"AI не вернул обязательные поля: {missing_fields}")
+
+    data["watering_interval_days"] = int(data["watering_interval_days"])
+    data["fertilizing_interval_days"] = int(data["fertilizing_interval_days"])
+    data["min_temperature_celsius"] = float(data["min_temperature_celsius"])
+    data["max_temperature_celsius"] = float(data["max_temperature_celsius"])
+
+    if not 1 <= data["watering_interval_days"] <= 60:
+        raise ValueError("watering_interval_days должен быть от 1 до 60")
+
+    if not 1 <= data["fertilizing_interval_days"] <= 180:
+        raise ValueError("fertilizing_interval_days должен быть от 1 до 180")
+
+    if data["max_temperature_celsius"] <= data["min_temperature_celsius"]:
+        raise ValueError(
+            "max_temperature_celsius должен быть больше min_temperature_celsius"
+        )
+
+    text_fields = [
+        "common_name",
+        "scientific_name",
+        "description",
+        "watering_info",
+        "light_info",
+        "humidity_info",
+        "soil_info",
+        "fertilizing_info",
+        "care_info",
+        "useful_info",
+    ]
+
+    for field in text_fields:
+        value = data[field]
+
+        if not isinstance(value, str):
+            raise ValueError(f"{field} должен быть строкой")
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError(f"{field} не должен быть пустым")
+
+        data[field] = value
+
+    return data
 
 
 async def get_plant_care_from_deepseek(
     scientific_name: str,
     common_name: str | None = None,
 ) -> PlantCreate:
-    client = OpenAI(
-        base_url=settings.OPENROUTER_BASE_URL,
-        api_key=settings.OPENROUTER_API_KEY,
-    )
-
     try:
         response = client.chat.completions.create(
             model=settings.OPENROUTER_MODEL,
@@ -128,7 +218,9 @@ async def get_plant_care_from_deepseek(
                     "role": "system",
                     "content": (
                         "Ты возвращаешь только валидный JSON. "
-                        "Не используй markdown. Не добавляй пояснения."
+                        "Не используй markdown. "
+                        "Не добавляй пояснения. "
+                        "Все текстовые значения должны быть на русском языке."
                     ),
                 },
                 {
@@ -139,12 +231,8 @@ async def get_plant_care_from_deepseek(
                     ),
                 },
             ],
-            temperature=0.2,
-            extra_body={
-                "reasoning": {
-                    "enabled": True
-                }
-            },
+            temperature=0.1,
+            max_tokens=1200,
         )
 
         content = response.choices[0].message.content
@@ -152,20 +240,41 @@ async def get_plant_care_from_deepseek(
         if content is None:
             raise ValueError("OpenRouter вернул пустой content")
 
-        content = clean_json_content(content)
-        parsed = json.loads(content)
+        print("OpenRouter raw content:")
+        print(content)
+
+        cleaned_content = clean_json_content(content)
+
+        print("OpenRouter cleaned JSON:")
+        print(cleaned_content)
+
+        parsed = json.loads(cleaned_content)
 
         if common_name and not parsed.get("common_name"):
             parsed["common_name"] = common_name
 
         parsed["scientific_name"] = scientific_name
 
+        parsed = validate_plant_care_dict(parsed)
+
         return PlantCreate(**parsed)
+
+    except json.JSONDecodeError as error:
+        print("OpenRouter JSON decode error:", repr(error))
+        print("Scientific name:", scientific_name)
+        print("Common name:", common_name)
+
+        return get_fallback_plant_care(
+            scientific_name=scientific_name,
+            common_name=common_name,
+        )
 
     except Exception as error:
         print("OpenRouter error:", repr(error))
+        print("Scientific name:", scientific_name)
+        print("Common name:", common_name)
 
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Ошибка при обращении к OpenRouter API",
+        return get_fallback_plant_care(
+            scientific_name=scientific_name,
+            common_name=common_name,
         )
