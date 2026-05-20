@@ -11,6 +11,13 @@ class UserPlantCreate(BaseModel):
     image_url: str | None = Field(default=None, max_length=500)
 
 
+class UserPlantUpdate(BaseModel):
+    custom_name: str | None = Field(default=None, max_length=255)
+    image_url: str | None = Field(default=None, max_length=500)
+    last_watered_at: date | None = None
+    next_watering_date: date | None = None
+
+
 class UserPlantResponse(BaseModel):
     id: int
     user_id: int
