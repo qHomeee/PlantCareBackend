@@ -28,7 +28,7 @@ async def recognize_plant_with_plantnet(
         "lang": "ru",
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=50.0) as client:
         response = await client.post(
             settings.PLANTNET_API_URL,
             params=params,
