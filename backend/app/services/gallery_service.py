@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.plant import Plant
 from app.models.user_plant import UserPlant
 from app.models.watering_event import WateringEvent
-from app.schemas.gallery import UserPlantCreate
+from app.schemas.gallery import UserPlantCreate, UserPlantUpdate
 
 
 def generate_watering_events(
@@ -54,7 +54,7 @@ def add_plant_to_gallery(
     db.commit()
     db.refresh(user_plant)
 
-    return user_plant
+    return get_user_plant_by_id(db, user_id, user_plant.id)
 
 
 def get_user_gallery(db: Session, user_id: int) -> list[UserPlant]:
@@ -78,3 +78,31 @@ def get_user_plant_by_id(
         .filter(UserPlant.id == user_plant_id, UserPlant.user_id == user_id)
         .first()
     )
+
+
+def update_user_plant(
+    db: Session,
+    user_plant: UserPlant,
+    data: UserPlantUpdate,
+) -> UserPlant:
+    update_data = data.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(user_plant, field, value)
+
+    db.commit()
+    db.refresh(user_plant)
+
+    return get_user_plant_by_id(
+        db=db,
+        user_id=user_plant.user_id,
+        user_plant_id=user_plant.id,
+    )
+
+
+def delete_user_plant(
+    db: Session,
+    user_plant: UserPlant,
+) -> None:
+    db.delete(user_plant)
+    db.commit()
