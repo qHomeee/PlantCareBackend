@@ -11,6 +11,7 @@ from app.services.care_service import (
     get_user_watering_events,
     get_watering_event_by_id,
     skip_watering_event,
+    get_watering_events_by_user_plant
 )
 
 
@@ -114,4 +115,21 @@ def skip_watering(
         db=db,
         event=event,
         note=data.note,
+    )
+
+@router.get(
+    "/user-plants/{user_plant_id}/watering-events",
+    response_model=list[WateringEventResponse],
+)
+def get_plant_watering_events(
+    user_plant_id: int,
+    status_filter: str | None = Query(default=None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_watering_events_by_user_plant(
+        db=db,
+        user_id=current_user.id,
+        user_plant_id=user_plant_id,
+        status=status_filter,
     )
