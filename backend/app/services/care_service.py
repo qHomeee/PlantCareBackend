@@ -1,19 +1,44 @@
-from datetime import datetime,date,timedelta
+from datetime import date, datetime, timedelta
 
-from sqlalchemy.orm import Session
-from app.models.plant import Plant
+from sqlalchemy.orm import Session, joinedload
+
 from app.models.user_plant import UserPlant
 from app.models.watering_event import WateringEvent
 
 
-def get_user_watering_calendar(
+def get_user_watering_events(
+    db: Session,
+    user_id: int,
+    status: str | None = None,
+) -> list[WateringEvent]:
+    query = (
+        db.query(WateringEvent)
+        .join(UserPlant, WateringEvent.user_plant_id == UserPlant.id)
+        .options(joinedload(WateringEvent.user_plant))
+        .filter(UserPlant.user_id == user_id)
+        .order_by(WateringEvent.scheduled_date.asc())
+    )
+
+    if status:
+        query = query.filter(WateringEvent.status == status)
+
+    return query.all()
+
+
+def get_today_watering_events(
     db: Session,
     user_id: int,
 ) -> list[WateringEvent]:
+    today = date.today()
+
     return (
         db.query(WateringEvent)
         .join(UserPlant, WateringEvent.user_plant_id == UserPlant.id)
-        .filter(UserPlant.user_id == user_id)
+        .filter(
+            UserPlant.user_id == user_id,
+            WateringEvent.scheduled_date == today,
+            WateringEvent.status == "planned",
+        )
         .order_by(WateringEvent.scheduled_date.asc())
         .all()
     )
@@ -35,14 +60,19 @@ def get_watering_event_by_id(
     )
 
 
-def update_watering_event(
+def complete_watering_event(
     db: Session,
     event: WateringEvent,
-    status: str,
-    note: str | None,
+    note: str | None = None,
 ) -> WateringEvent:
-    event.status = status
-    event.note = note
+    today = date.today()
+    now = datetime.utcnow()
+
+    event.status = "completed"
+    event.completed_at = now
+
+    if note is not None:
+        event.note = note
 
     user_plant = (
         db.query(UserPlant)
@@ -50,47 +80,44 @@ def update_watering_event(
         .first()
     )
 
-    if status == "completed":
-        now = datetime.utcnow()
-        today = date.today()
+    if user_plant:
+        interval = user_plant.plant.watering_interval_days
 
-        event.completed_at = now
+        user_plant.last_watered_at = today
+        user_plant.next_watering_date = today + timedelta(days=interval)
 
-        if user_plant is not None:
-            plant = (
-                db.query(Plant)
-                .filter(Plant.id == user_plant.plant_id)
-                .first()
+        existing_next_event = (
+            db.query(WateringEvent)
+            .filter(
+                WateringEvent.user_plant_id == user_plant.id,
+                WateringEvent.scheduled_date == user_plant.next_watering_date,
             )
+            .first()
+        )
 
-            user_plant.last_watered_at = today
+        if existing_next_event is None:
+            next_event = WateringEvent(
+                user_plant_id=user_plant.id,
+                scheduled_date=user_plant.next_watering_date,
+                status="planned",
+            )
+            db.add(next_event)
 
-            if plant is not None:
-                next_date = today + timedelta(days=plant.watering_interval_days)
-                user_plant.next_watering_date = next_date
+    db.commit()
+    db.refresh(event)
 
-                existing_next_event = (
-                    db.query(WateringEvent)
-                    .filter(
-                        WateringEvent.user_plant_id == user_plant.id,
-                        WateringEvent.scheduled_date == next_date,
-                    )
-                    .first()
-                )
+    return event
 
-                if existing_next_event is None:
-                    next_event = WateringEvent(
-                        user_plant_id=user_plant.id,
-                        scheduled_date=next_date,
-                        status="planned",
-                    )
-                    db.add(next_event)
 
-    elif status == "planned":
-        event.completed_at = None
+def skip_watering_event(
+    db: Session,
+    event: WateringEvent,
+    note: str | None = None,
+) -> WateringEvent:
+    event.status = "skipped"
 
-    elif status == "missed":
-        event.completed_at = None
+    if note is not None:
+        event.note = note
 
     db.commit()
     db.refresh(event)
