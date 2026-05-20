@@ -34,7 +34,8 @@ def mock_recognize(
         watering_info="Поливать после подсыхания верхнего слоя почвы.",
         watering_interval_days=7,
         light_info="Предпочитает яркий рассеянный свет.",
-        temperature_info="Оптимальная температура содержания 18–26 °C.",
+        min_temperature_celsius=16,
+        max_temperature_celsius=28,
         humidity_info="Предпочитает умеренную или повышенную влажность воздуха.",
         soil_info="Подходит рыхлый питательный грунт с хорошим дренажем.",
         fertilizing_info=(
