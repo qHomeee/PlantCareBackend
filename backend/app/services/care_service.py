@@ -144,3 +144,18 @@ def get_watering_events_by_user_plant(
         query = query.filter(WateringEvent.status == status)
 
     return query.all()
+
+def user_plant_exists_for_user(
+    db: Session,
+    user_id: int,
+    user_plant_id: int,
+) -> bool:
+    return (
+        db.query(UserPlant.id)
+        .filter(
+            UserPlant.id == user_plant_id,
+            UserPlant.user_id == user_id,
+        )
+        .first()
+        is not None
+    )
