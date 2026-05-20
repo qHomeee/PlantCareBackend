@@ -16,9 +16,9 @@ class Settings(BaseSettings):
     PLANTNET_API_KEY: str
     PLANTNET_API_URL: str
 
-    DEEPSEEK_API_KEY: str
-    DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
-    DEEPSEEK_MODEL: str = "deepseek-chat"
+    OPENROUTER_API_KEY: str
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "deepseek/deepseek-v4-flash:free"
 
     model_config = SettingsConfigDict(
         env_file=".env",
