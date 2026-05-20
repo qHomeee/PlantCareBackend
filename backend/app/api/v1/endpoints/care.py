@@ -11,7 +11,8 @@ from app.services.care_service import (
     get_user_watering_events,
     get_watering_event_by_id,
     skip_watering_event,
-    get_watering_events_by_user_plant
+    get_watering_events_by_user_plant,
+    user_plant_exists_for_user
 )
 
 
@@ -127,6 +128,15 @@ def get_plant_watering_events(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not user_plant_exists_for_user(
+        db=db,
+        user_id=current_user.id,
+        user_plant_id=user_plant_id,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Растение пользователя не найдено",
+        )
     return get_watering_events_by_user_plant(
         db=db,
         user_id=current_user.id,
