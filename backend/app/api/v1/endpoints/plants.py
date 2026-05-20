@@ -111,35 +111,38 @@ async def recognize_plant(
     plant = get_plant_by_scientific_name(db, scientific_name)
 
     if plant is None:
-        try:
-            plant_data = await get_plant_care_from_deepseek(
-                scientific_name=scientific_name,
-                common_name=common_name,
-            )
-        except Exception as error:
-            print("DeepSeek fallback used:", repr(error))
-            plant_data = get_fallback_plant_care(
-                scientific_name=scientific_name,
-                common_name=common_name,
-            )
+     try:
+        plant_data = await get_plant_care_from_deepseek(
+            scientific_name=scientific_name,
+            common_name=common_name,
+        )
+        print("AI care data:", plant_data.model_dump())
+     except Exception as error:
+        print("OpenRouter fallback used:", repr(error))
+        plant_data = get_fallback_plant_care(
+            scientific_name=scientific_name,
+            common_name=common_name,
+        )
+        print("Fallback care data:", plant_data.model_dump())
 
-        plant = create_plant(db, plant_data)
+     plant = create_plant(db, plant_data)
+     print("Created plant id:", plant.id)
 
     return {
-        "plant_id": plant.id,
-        "common_name": plant.common_name,
-        "scientific_name": plant.scientific_name,
-        "description": plant.description,
-        "watering_info": plant.watering_info,
-        "watering_interval_days": plant.watering_interval_days,
-        "light_info": plant.light_info,
-        "min_temperature_celsius": plant.min_temperature_celsius,
-        "max_temperature_celsius": plant.max_temperature_celsius,
-        "humidity_info": plant.humidity_info,
-        "soil_info": plant.soil_info,
-        "fertilizing_info": plant.fertilizing_info,
-        "fertilizing_interval_days": plant.fertilizing_interval_days,
-        "care_info": plant.care_info,
-        "useful_info": plant.useful_info,
-        "confidence": confidence,
-    }
+    "plant_id": plant.id,
+    "common_name": plant.common_name,
+    "scientific_name": plant.scientific_name,
+    "description": plant.description,
+    "watering_info": plant.watering_info,
+    "watering_interval_days": plant.watering_interval_days,
+    "light_info": plant.light_info,
+    "min_temperature_celsius": plant.min_temperature_celsius,
+    "max_temperature_celsius": plant.max_temperature_celsius,
+    "humidity_info": plant.humidity_info,
+    "soil_info": plant.soil_info,
+    "fertilizing_info": plant.fertilizing_info,
+    "fertilizing_interval_days": plant.fertilizing_interval_days,
+    "care_info": plant.care_info,
+    "useful_info": plant.useful_info,
+    "confidence": confidence,
+}
