@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
@@ -26,3 +26,5 @@ class WateringEvent(Base):
         DateTime,
         default=datetime.now,
     )
+
+    user_plant = relationship("UserPlant")
