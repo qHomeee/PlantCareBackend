@@ -123,3 +123,24 @@ def skip_watering_event(
     db.refresh(event)
 
     return event
+
+def get_watering_events_by_user_plant(
+    db: Session,
+    user_id: int,
+    user_plant_id: int,
+    status: str | None = None,
+) -> list[WateringEvent]:
+    query = (
+        db.query(WateringEvent)
+        .join(UserPlant, WateringEvent.user_plant_id == UserPlant.id)
+        .filter(
+            UserPlant.id == user_plant_id,
+            UserPlant.user_id == user_id,
+        )
+        .order_by(WateringEvent.scheduled_date.asc(), WateringEvent.id.asc())
+    )
+
+    if status is not None:
+        query = query.filter(WateringEvent.status == status)
+
+    return query.all()
