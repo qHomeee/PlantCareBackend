@@ -20,7 +20,7 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     username: str
-
+    avatar_url: str | None = None
     model_config = {
         "from_attributes": True
     }
