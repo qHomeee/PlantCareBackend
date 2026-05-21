@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
-
+from pathlib import Path
+from uuid import uuid4
 from app.api.v1.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
@@ -17,6 +18,14 @@ from app.services.plantnet_service import recognize_plant_with_plantnet
 
 
 router = APIRouter()
+
+PLANT_UPLOAD_DIR = Path("static/uploads/plants")
+
+ALLOWED_PLANT_IMAGE_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 @router.post(
@@ -73,6 +82,35 @@ async def recognize_plant(
             detail="Файл должен быть изображением",
         )
 
+    extension = ALLOWED_PLANT_IMAGE_TYPES.get(file.content_type)
+
+    if extension is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Допустимые форматы изображения: JPG, PNG, WEBP",
+        )
+
+    PLANT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    filename = f"plant_{current_user.id}_{uuid4().hex}{extension}"
+    file_path = PLANT_UPLOAD_DIR / filename
+
+    content = await file.read()
+
+    max_size_bytes = 10 * 1024 * 1024
+
+    if len(content) > max_size_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Размер изображения не должен превышать 10 МБ",
+        )
+
+    file_path.write_bytes(content)
+
+    image_url = f"/static/uploads/plants/{filename}"
+
+    await file.seek(0)
+
     try:
         plantnet_data = await recognize_plant_with_plantnet(file, organ="leaf")
     except Exception as error:
@@ -112,38 +150,41 @@ async def recognize_plant(
     plant = get_plant_by_scientific_name(db, scientific_name)
 
     if plant is None:
-     try:
-        plant_data = await get_plant_care_from_deepseek(
-            scientific_name=scientific_name,
-            common_name=common_name,
-        )
-        print("AI care data:", plant_data.model_dump())
-     except Exception as error:
-        print("OpenRouter fallback used:", repr(error))
-        plant_data = get_fallback_plant_care(
-            scientific_name=scientific_name,
-            common_name=common_name,
-        )
-        print("Fallback care data:", plant_data.model_dump())
+        try:
+            plant_data = await get_plant_care_from_deepseek(
+                scientific_name=scientific_name,
+                common_name=common_name,
+            )
+            print("AI care data:", plant_data.model_dump())
 
-     plant = create_plant(db, plant_data)
-     print("Created plant id:", plant.id)
+        except Exception as error:
+            print("OpenRouter fallback used:", repr(error))
+
+            plant_data = get_fallback_plant_care(
+                scientific_name=scientific_name,
+                common_name=common_name,
+            )
+            print("Fallback care data:", plant_data.model_dump())
+
+        plant = create_plant(db, plant_data)
+        print("Created plant id:", plant.id)
 
     return {
-    "plant_id": plant.id,
-    "common_name": plant.common_name,
-    "scientific_name": plant.scientific_name,
-    "description": plant.description,
-    "watering_info": plant.watering_info,
-    "watering_interval_days": plant.watering_interval_days,
-    "light_info": plant.light_info,
-    "min_temperature_celsius": plant.min_temperature_celsius,
-    "max_temperature_celsius": plant.max_temperature_celsius,
-    "humidity_info": plant.humidity_info,
-    "soil_info": plant.soil_info,
-    "fertilizing_info": plant.fertilizing_info,
-    "fertilizing_interval_days": plant.fertilizing_interval_days,
-    "care_info": plant.care_info,
-    "useful_info": plant.useful_info,
-    "confidence": confidence,
-}
+        "plant_id": plant.id,
+        "common_name": plant.common_name,
+        "scientific_name": plant.scientific_name,
+        "description": plant.description,
+        "watering_info": plant.watering_info,
+        "watering_interval_days": plant.watering_interval_days,
+        "light_info": plant.light_info,
+        "min_temperature_celsius": plant.min_temperature_celsius,
+        "max_temperature_celsius": plant.max_temperature_celsius,
+        "humidity_info": plant.humidity_info,
+        "soil_info": plant.soil_info,
+        "fertilizing_info": plant.fertilizing_info,
+        "fertilizing_interval_days": plant.fertilizing_interval_days,
+        "care_info": plant.care_info,
+        "useful_info": plant.useful_info,
+        "confidence": confidence,
+        "image_url": image_url,
+    }
