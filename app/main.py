@@ -5,7 +5,7 @@ from app.core.config import settings
 from fastapi.staticfiles import StaticFiles
 from app.models import Plant, User, UserPlant, WateringEvent
 from app.core.database import Base,engine
-
+from fastapi.staticfiles import StaticFiles
 
 Base.metadata.create_all(bind= engine)
 
@@ -13,7 +13,7 @@ app = fastapi.FastAPI(
     title=settings.APP_NAME,
     version = settings.APP_VERSION
 )
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins = ["*"],
