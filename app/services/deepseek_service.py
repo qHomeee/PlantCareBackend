@@ -62,6 +62,7 @@ JSON должен содержать строго следующие поля:
 - max_temperature_celsius должен быть больше min_temperature_celsius.
 - Не добавляй лишние поля.
 - Не пропускай поля.
+- Температурный диапазон должен зависеть от конкретного вида растения.
 - В "min_temperature_celsius", "max_temperature_celsius","watering_interval_days" информация может быть разной в зависимости от растения
 """
 
