@@ -62,6 +62,7 @@ JSON должен содержать строго следующие поля:
 - max_temperature_celsius должен быть больше min_temperature_celsius.
 - Не добавляй лишние поля.
 - Не пропускай поля.
+- В "min_temperature_celsius", "max_temperature_celsius","watering_interval_days" информация может быть разной в зависимости от растения
 """
 
 
@@ -232,7 +233,7 @@ async def get_plant_care_from_deepseek(
                 },
             ],
             temperature=0.1,
-            max_tokens=1200,
+            max_tokens=100000,
         )
 
         content = response.choices[0].message.content
