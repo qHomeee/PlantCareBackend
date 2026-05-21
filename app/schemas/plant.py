@@ -49,3 +49,4 @@ class PlantResponse(PlantBase):
 class PlantRecognizeResponse(PlantBase):
     plant_id: int
     confidence: float = Field(ge=0, le=1)
+    image_url: str | None = None
