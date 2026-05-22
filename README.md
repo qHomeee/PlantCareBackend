@@ -533,10 +533,32 @@ app/tests/
 При успешном прогоне:
 
 ```text
-======================== 25 passed in ~7s ========================
+======================== ~57 passed in ~15s ========================
 ```
 
 Файл `test.db` создаётся автоматически и добавлен в `.gitignore`.
+
+## CI/CD (GitHub Actions)
+
+Тесты автоматически запускаются при **push** и **pull request** в ветки `main` и `tests`.
+
+Workflow: `.github/workflows/tests.yml`
+
+### Что делает pipeline
+
+1. Checkout репозитория
+2. Установка Python 3.13
+3. `pip install -r requirements.txt`
+4. `python -m pytest app/tests -v`
+
+PostgreSQL и `.env` **не нужны** — в CI используется та же SQLite-конфигурация, что и в `app/tests/conftest.py`.
+
+### Как включить CI в своём репозитории
+
+1. Закоммитьте и запушьте файл `.github/workflows/tests.yml` в GitHub.
+2. Убедитесь, что в репозитории есть `app/tests/` и `requirements.txt`.
+3. Сделайте push в `main` или `tests` — на вкладке **Actions** появится job **Backend Tests**.
+
 
 ### 6. Устранение типичных проблем
 
