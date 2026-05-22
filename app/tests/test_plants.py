@@ -18,6 +18,12 @@ def test_mock_recognize_plant(client, auth_headers):
     assert "plant_id" in data
 
 
+def test_mock_recognize_unauthorized(client):
+    response = client.post("/api/v1/plants/mock-recognize")
+
+    assert response.status_code == 401
+
+
 @patch(
     "app.api.v1.endpoints.plants.get_plant_care_from_deepseek",
     new_callable=AsyncMock,
@@ -73,6 +79,50 @@ def test_recognize_plant(
     data = response.json()
 
     assert data["scientific_name"] == "Monstera deliciosa"
+
+
+@patch(
+    "app.api.v1.endpoints.plants.recognize_plant_with_plantnet",
+    new_callable=AsyncMock,
+)
+def test_recognize_plant_no_results(mock_plantnet, client, auth_headers):
+    mock_plantnet.return_value = {"results": []}
+
+    with TEST_IMAGE_PATH.open("rb") as image:
+        response = client.post(
+            "/api/v1/plants/recognize",
+            headers=auth_headers,
+            files={"file": ("plant.jpg", image, "image/jpeg")},
+        )
+
+    assert response.status_code == 404
+
+
+@patch(
+    "app.api.v1.endpoints.plants.recognize_plant_with_plantnet",
+    new_callable=AsyncMock,
+)
+def test_recognize_plant_plantnet_error(mock_plantnet, client, auth_headers):
+    mock_plantnet.side_effect = RuntimeError("PlantNet unavailable")
+
+    with TEST_IMAGE_PATH.open("rb") as image:
+        response = client.post(
+            "/api/v1/plants/recognize",
+            headers=auth_headers,
+            files={"file": ("plant.jpg", image, "image/jpeg")},
+        )
+
+    assert response.status_code == 502
+
+
+def test_recognize_unauthorized(client):
+    with TEST_IMAGE_PATH.open("rb") as image:
+        response = client.post(
+            "/api/v1/plants/recognize",
+            files={"file": ("plant.jpg", image, "image/jpeg")},
+        )
+
+    assert response.status_code == 401
 
 
 def test_upload_non_image_file(client, auth_headers):
