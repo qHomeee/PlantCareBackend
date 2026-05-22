@@ -455,3 +455,94 @@ Backend реализует MVP системы PlantCare:
 ```
 
 Проект готов для интеграции с Android-клиентом и React-сайтом.
+
+## Тестирование
+
+Тесты используют **SQLite** (`test.db` в корне проекта) и не требуют запущенного PostgreSQL. Внешние API (PlantNet, OpenRouter) в интеграционных тестах **мокаются**.
+
+### 1. Подготовка окружения
+
+Windows PowerShell:
+
+```powershell
+cd PlantCareBackend
+python -m venv .venv
+.\.venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
+
+Для тестов **не обязательно** создавать `.env` — переменные окружения для pytest задаются в `app/tests/conftest.py`.
+
+### 2. Запуск всех тестов
+
+Из корня репозитория:
+
+```powershell
+python -m pytest app/tests -v
+```
+
+Краткий отчёт без подробного traceback:
+
+```powershell
+python -m pytest app/tests -q
+```
+
+### 3. Запуск отдельных групп тестов
+
+Только API (auth, users, plants, gallery, care):
+
+```powershell
+python -m pytest app/tests/test_auth.py app/tests/test_users.py app/tests/test_plants.py app/tests/test_gallery.py app/tests/test_reminders.py app/tests/test_health.py -v
+```
+
+Только unit-тесты сервисов:
+
+```powershell
+python -m pytest app/tests/services -v
+```
+
+Один файл или один тест:
+
+```powershell
+python -m pytest app/tests/test_plants.py::test_mock_recognize_plant -v
+```
+
+### 4. Структура тестов
+
+```text
+app/tests/
+├── conftest.py              # SQLite, фикстуры client / auth_headers / sample_plant_id
+├── fixtures/
+│   └── test_img.jpg         # изображение для POST /plants/recognize
+├── test_auth.py
+├── test_users.py
+├── test_plants.py
+├── test_gallery.py
+├── test_reminders.py
+├── test_security.py
+├── test_database.py
+├── test_health.py
+└── services/
+    ├── test_gallery_service.py
+    ├── test_plantnet_service.py
+    └── test_openrouter_service.py
+```
+
+### 5. Ожидаемый результат
+
+При успешном прогоне:
+
+```text
+======================== 25 passed in ~7s ========================
+```
+
+Файл `test.db` создаётся автоматически и добавлен в `.gitignore`.
+
+### 6. Устранение типичных проблем
+
+| Проблема | Решение |
+|----------|---------|
+| `No module named pytest` | `python -m pip install -r requirements.txt` |
+| Ошибки импорта `app` | Запускайте pytest из корня `PlantCareBackend` (см. `pytest.ini`, `pythonpath = .`) |
+| `Settings` / отсутствует `.env` при запуске сервера | Для **uvicorn** нужен `.env`; для **pytest** — нет |
+| Тест recognize падает | Убедитесь, что есть `app/tests/fixtures/test_img.jpg` |
